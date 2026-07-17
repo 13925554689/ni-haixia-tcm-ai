@@ -291,6 +291,14 @@ function renderResult(d) {
     h += `<div class="ni-quote">💭 <b>倪师思路：</b><br>${escapeHtml(d['倪海厦诊疗思路'])}</div>`;
   }
 
+  // 课程证据溯源
+  if (d['主方']) {
+    h += `<div id="evidenceBox" style="margin:10px 0;padding:10px 14px;background:#f0f4ff;border-radius:8px;border-left:3px solid #4a90d9;font-size:12px">`;
+    h += `<div style="font-weight:700;color:#4a90d9;margin-bottom:6px">📚 课程溯源（${escapeHtml(d['主方'])}）</div>`;
+    h += `<div id="evidenceContent" style="color:#888">检索中...</div>`;
+    h += `</div>`;
+  }
+
   if (d['llm_enhanced']) {
     h += `<div style="margin:10px 0;padding:12px;background:#fff;border-radius:8px;font-size:13px;white-space:pre-wrap;line-height:1.7">🤖 <b>AI增强分析：</b><br>${escapeHtml(d['llm_enhanced'])}</div>`;
   }
@@ -304,8 +312,42 @@ function renderResult(d) {
 
   el.innerHTML = h;
 
-  // 加载进化数据
+  // 加载进化数据 + 课程证据
   loadEvolutionMini();
+  if (d['主方']) loadEvidence(d['主方']);
+}
+
+// ━━━ 课程证据溯源 ━━━
+async function loadEvidence(formula) {
+  const el = document.getElementById('evidenceContent');
+  if (!el) return;
+  try {
+    const resp = await fetch('/api/evidence/' + encodeURIComponent(formula));
+    const data = await resp.json();
+    if (!data.kb_available) {
+      el.innerHTML = '<span style="color:#ccc">知识库未加载（需 nihaisha-nishi-tcm 数据）</span>';
+      return;
+    }
+    let h = '';
+    if (data.references && data.references.length > 0) {
+      h += `<div style="margin-bottom:4px">📖 ${data.references.length} 条课程原文参考：</div>`;
+      data.references.slice(0, 3).forEach(r => {
+        h += `<div style="margin:4px 0;padding:6px 8px;background:#fff;border-radius:4px;font-size:11px">
+          <b>${escapeHtml(r.name)}</b>
+          <span style="color:#999"> · ${escapeHtml(r.source)}</span>
+          <div style="color:#666;margin-top:2px">${escapeHtml(r.summary||'').substring(0, 100)}</div>
+        </div>`;
+      });
+    } else {
+      h += '<span style="color:#999">未找到课程原文参考</span>';
+    }
+    if (data.screenshots && data.screenshots.length > 0) {
+      h += `<div style="margin-top:6px">📸 ${data.screenshots.length} 张板书截图证据</div>`;
+    }
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = '<span style="color:#ccc">溯源请求失败</span>';
+  }
 }
 
 async function loadEvolutionMini() {

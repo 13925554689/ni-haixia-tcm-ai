@@ -14,6 +14,13 @@ from engine.evolution_engine import (
 )
 from engine.tongue_analysis import analyze_tongue_from_bytes, merge_tongue_to_symptoms
 
+# ─── 知识库检索 ───
+try:
+    from cli.search_refs import search_evidence, get_module_stats, list_modules
+    _KB_AVAILABLE = True
+except ImportError:
+    _KB_AVAILABLE = False
+
 app = Flask(__name__)
 
 
@@ -185,6 +192,34 @@ def api_tongue_analyze():
         response["diagnosis"] = diag
 
     return jsonify(response)
+
+
+# ───────── 证据溯源 ─────────
+
+@app.route("/api/evidence/<formula>")
+def api_evidence(formula):
+    """检索方剂的课程原文 + 截图证据"""
+    if not _KB_AVAILABLE:
+        return jsonify({"error": "知识库未加载（缺少 references/ 目录）", "kb_available": False})
+
+    try:
+        evidence = search_evidence(formula, limit=5)
+        return jsonify({"success": True, **evidence, "kb_available": True})
+    except Exception as e:
+        return jsonify({"error": f"检索失败: {e}", "kb_available": True})
+
+
+@app.route("/api/kb/stats")
+def api_kb_stats():
+    """知识库统计信息"""
+    if not _KB_AVAILABLE:
+        return jsonify({"kb_available": False, "modules": [], "references": 0, "screenshots": 0})
+
+    try:
+        stats = get_module_stats()
+        return jsonify({"success": True, **stats, "kb_available": True})
+    except Exception as e:
+        return jsonify({"error": str(e), "kb_available": True})
 
 
 # ───────── LLM增强 ─────────
