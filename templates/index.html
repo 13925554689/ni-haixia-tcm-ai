@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>倪海厦中医AI智能体</title>
+<style>
+:root { --pri: #8B4513; --pri2: #A0522D; --bg: #fdf6ec; --card: #fff; --danger: #c0392b; --warn: #e67e22; --ok: #27ae60; --gray: #7f8c8d; --border: #d4c5a9; --gold: #d4a853; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft YaHei", serif; background: var(--bg); color: #3e2723; line-height: 1.8; background-image: radial-gradient(circle at 20% 20%, #f5e6c8 1px, transparent 0); background-size: 30px 30px; }
+.header { background: linear-gradient(135deg, #5D2E0C, #8B4513); color: #f5e6c8; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--gold); }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header .sub { font-size: 13px; opacity: .8; }
+.tabs { display: flex; gap: 0; padding: 0 32px; background: #fff; border-bottom: 2px solid var(--border); }
+.tab { padding: 12px 24px; border: none; background: none; cursor: pointer; font-size: 14px; color: #8d6e63; transition: .2s; font-family: "Microsoft YaHei", serif; }
+.tab:hover { color: var(--pri); }
+.tab.active { color: var(--pri); font-weight: 700; border-bottom: 3px solid var(--pri); }
+.panel { display: none; padding: 24px 32px; max-width: 1100px; margin: 0 auto; }
+.panel.active { display: block; }
+.card { background: var(--card); border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(139,69,19,.08); border: 1px solid var(--border); }
+.card h3 { font-size: 17px; margin-bottom: 16px; color: var(--pri); border-left: 4px solid var(--gold); padding-left: 12px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 700; color: #5D2E0C; margin-bottom: 6px; }
+.form-group textarea { width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; line-height: 1.7; font-family: "Microsoft YaHei", serif; background: #fcf8f2; }
+.form-group textarea:focus { outline: none; border-color: var(--pri); background: #fff; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; transition: .2s; font-family: "Microsoft YaHei", serif; }
+.btn-primary { background: var(--pri); color: #fff; }
+.btn-primary:hover { background: var(--pri2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,69,19,.2); }
+.btn-outline { background: #fff; color: var(--pri); border: 2px solid var(--pri); }
+.btn-outline:hover { background: #fdf6ec; }
+.btn-sm { padding: 6px 16px; font-size: 13px; }
+.row { display: flex; gap: 20px; }
+.row > * { flex: 1; }
+@media (max-width: 768px) { .row { flex-direction: column; } }
+.loading { text-align: center; padding: 32px; display: none; }
+.loading.show { display: block; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--pri); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.diag-box { background: linear-gradient(135deg, #fdf6ec, #f5e6c8); border: 2px solid var(--gold); border-radius: 10px; padding: 20px; margin: 12px 0; }
+.diag-box .label { font-weight: 700; color: var(--pri); font-size: 16px; }
+.diag-box .value { font-size: 18px; color: #3e2723; margin-bottom: 8px; }
+.channel-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 14px; }
+.channel-太阳病 { background: #ffe0e0; color: #b71c1c; }
+.channel-阳明病 { background: #fff3e0; color: #e65100; }
+.channel-少阳病 { background: #fff9c4; color: #f57f17; }
+.channel-太阴病 { background: #e8f5e9; color: #1b5e20; }
+.channel-少阴病 { background: #e3f2fd; color: #0d47a1; }
+.channel-厥阴病 { background: #f3e5f5; color: #4a148c; }
+.formula-card { background: #faf5eb; border: 2px solid #d4c5a9; border-radius: 8px; padding: 16px; margin: 10px 0; }
+.formula-card .fname { font-size: 20px; font-weight: 700; color: var(--pri); }
+.herb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 10px 0; }
+.herb-tag { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 13px; }
+.herb-tag .hname { font-weight: 700; color: var(--pri); }
+.herb-tag .hprop { font-size: 11px; color: #888; }
+.warning-box { background: #fff5f5; border-left: 4px solid var(--danger); padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 10px 0; }
+.warning-box .wtitle { font-weight: 700; color: var(--danger); }
+.evo-stat { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.evo-item { background: #fdf6ec; border-radius: 8px; padding: 14px; text-align: center; border: 1px solid var(--border); }
+.evo-item .enum { font-size: 32px; font-weight: 700; color: var(--pri); }
+.evo-item .etxt { font-size: 12px; color: #888; }
+.case-list { max-height: 400px; overflow-y: auto; }
+.case-row { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 13px; }
+.case-row .cdate { color: #999; }
+.case-row .cfx { color: var(--pri); font-weight: 700; }
+.case-row .ceff { font-size: 12px; }
+.ni-quote { background: #fff; border-left: 3px solid var(--gold); padding: 12px 16px; margin: 8px 0; font-style: italic; color: #5D2E0C; white-space: pre-line; }
+.result { display: none; }
+.result.show { display: block; }
+.efficacy-select { margin: 8px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🏥 倪海厦中医AI智能体</h1>
+    <div class="sub">六经辨证 · 经方选药 · 自我进化</div>
+  </div>
+  <div style="text-align:right">
+    <div class="sub" id="statusLine">初始化中...</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('diagnose')">🩺 辨证开方</button>
+  <button class="tab" onclick="switchTab('evolution')">📈 自我进化</button>
+</div>
+
+<!-- ── 辨证开方面板 ── -->
+<div class="panel active" id="panel-diagnose">
+  <div class="card">
+    <h3>请描述症状（越详细越好）</h3>
+    <div class="form-group">
+      <textarea id="symptoms" rows="5" placeholder="例如：这两天怕冷发热、头痛项强、无汗、鼻塞、脉浮紧，胃口尚可，大便正常..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary" onclick="runDiagnose()">🩺 六经辨证开方</button>
+      <span style="font-size:12px;color:#999">覆盖六大经证+经方+药性+煎服法</span>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#999">
+      建议覆盖：睡眠、饮食、大小便、口渴、手足温度、寒热、汗出
+    </div>
+  </div>
+
+  <div class="loading" id="diagLoading"><div class="spinner"></div><p>六经辨证中...</p></div>
+
+  <div class="result" id="diagResult">
+    <div class="card">
+      <h3 id="diagTitle">辨证结果</h3>
+      <div id="diagContent"></div>
+    </div>
+  </div>
+
+  <div class="result" id="feedBackPanel">
+    <div class="card">
+      <h3>诊疗反馈（帮助AI自我进化）</h3>
+      <div class="efficacy-select">
+        <label style="font-weight:700">疗效反馈：</label>
+        <select id="efficacy" style="padding:8px;border-radius:6px;margin-left:8px">
+          <option value="">-- 请选择 --</option>
+          <option value="显效">显效</option>
+          <option value="有效">有效</option>
+          <option value="无效">无效</option>
+          <option value="恶化">恶化</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="recordFeedback()">📝 记录此案</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 自我进化面板 ── -->
+<div class="panel" id="panel-evolution">
+  <div class="card">
+    <h3>进化状态</h3>
+    <div class="evo-stat" id="evoStats"></div>
+  </div>
+  <div class="card">
+    <h3>最近案例</h3>
+    <div class="case-list" id="caseList"></div>
+  </div>
+  <div class="card">
+    <h3>避坑清单</h3>
+    <pre id="checklist" style="white-space:pre-wrap;font-size:12px;color:#666;max-height:300px;overflow-y:auto"></pre>
+  </div>
+</div>
+
+<script>
+let lastDiagnosis = null;
+
+function escapeHtml(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active',
+    name==='diagnose'?t.textContent.includes('辨证'):t.textContent.includes('进化')));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='evolution') loadEvolution();
+}
+
+async function runDiagnose() {
+  const symptoms = document.getElementById('symptoms').value.trim();
+  if(symptoms.length<3) return alert('请描述至少3个字的症状');
+
+  document.getElementById('diagLoading').classList.add('show');
+  document.getElementById('diagResult').classList.remove('show');
+  document.getElementById('feedBackPanel').classList.remove('show');
+  document.getElementById('diagTitle').textContent = '辨证中...';
+
+  try {
+    const resp = await fetch('/api/diagnose', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({symptoms})
+    });
+    const data = await resp.json();
+    document.getElementById('diagLoading').classList.remove('show');
+
+    if(!resp.ok) { alert(data.error); return; }
+
+    lastDiagnosis = {symptoms, diagnosis:data};
+    document.getElementById('diagTitle').textContent = '辨证结果：' + data.diagnosis;
+    renderDiagnosis(data);
+    document.getElementById('diagResult').classList.add('show');
+    document.getElementById('feedBackPanel').classList.add('show');
+  } catch(e) {
+    document.getElementById('diagLoading').classList.remove('show');
+    alert('请求失败: '+e.message);
+  }
+}
+
+function renderDiagnosis(d) {
+  const el = document.getElementById('diagContent');
+  let h = '';
+
+  // 六经定位
+  const ch = d['六经定位']||'';
+  h += `<div class="diag-box"><div class="label">📌 六经定位</div>`;
+  h += `<span class="channel-badge channel-${ch}">${ch}</span>`;
+  if(d['证型']) h += ` <span style="font-weight:700;margin-left:8px">→ ${d['证型']}</span>`;
+  h += `<div class="value" style="margin-top:8px">${d['病机']||''}</div>`;
+  h += `<div style="color:#888;font-size:13px">治法：${d['治法']||''} | 置信度：${d['置信度']||'?'}</div>`;
+  if(d['证型主症']) h += `<div style="font-size:13px;color:#666;margin-top:4px">主症：${d['证型主症']}</div>`;
+  h += `</div>`;
+
+  // 多经关联
+  if(d['多经关联'] && d['多经关联'].length>0) {
+    h += `<div style="font-size:12px;color:#999;margin:4px 0">多经关联：${d['多经关联'].map(x=>x['经']+'('+x['得分']+')').join(' → ')}</div>`;
+  }
+
+  // 健康基线
+  if(d['健康基线对比'] && d['健康基线对比'].length>0) {
+    h += `<div class="warning-box"><div class="wtitle">⚠ 偏离健康基线</div>`;
+    d['健康基线对比'].forEach(g => {
+      h += `<div style="font-size:13px">• <b>${g['维度']}</b>：${g['偏差']}<br><span style="color:#888">健康标准：${g['健康标准']}</span></div>`;
+    });
+    h += `</div>`;
+  }
+
+  // 主方
+  if(d['主方'] && d['主方']!=='辨证选方中') {
+    const fd = d['方剂详情']||{};
+    h += `<div class="formula-card"><div class="fname">💊 ${d['主方']}</div>`;
+    if(fd['主治']) h += `<div style="font-size:13px;color:#888;margin:4px 0">主治：${fd['主治']}</div>`;
+
+    // 药性网格
+    if(d['药性分析'] && d['药性分析'].length>0) {
+      h += `<div class="herb-grid">`;
+      d['药性分析'].forEach(hb => {
+        h += `<div class="herb-tag"><div class="hname">${hb['药名']} ${hb['剂量']||''}</div>`;
+        h += `<div class="hprop">${hb['性味']||''} · ${hb['归经']||''}</div>`;
+        h += `<div class="hprop">${hb['功效']||''}</div>`;
+        if(hb['倪注']) h += `<div style="font-size:11px;color:#8B4513;margin-top:2px">💬 ${hb['倪注']}</div>`;
+        h += `</div>`;
+      });
+      h += `</div>`;
+    }
+
+    // 煎服法
+    if(d['煎服法']) {
+      h += `<div class="diag-box" style="background:#f0f8e8"><div class="label">🍵 煎服法</div><div>${d['煎服法']}</div></div>`;
+    }
+
+    // 加减法
+    if(d['加减法'] && Object.keys(d['加减法']).length>0) {
+      h += `<div style="font-size:13px;margin-top:8px"><b>加减法：</b>`;
+      Object.entries(d['加减法']).forEach(([k,v]) => h += `<span style="background:#f0e6d2;padding:2px 8px;border-radius:4px;margin:2px">${k} → ${v}</span> `);
+      h += `</div>`;
+    }
+
+    // 禁忌
+    if(d['注意事项']) {
+      h += `<div class="warning-box"><div class="wtitle">⚠ 禁忌与注意事项</div><div>${d['注意事项']}</div></div>`;
+    }
+
+    h += `</div>`;
+  }
+
+  // 倪海厦诊疗思路
+  if(d['倪海厦诊疗思路']) {
+    h += `<div class="ni-quote">💭 <b>倪师思路：</b><br>${d['倪海厦诊疗思路']}</div>`;
+  }
+
+  // LLM增强
+  if(d['llm_enhanced']) {
+    h += `<div class="card"><h3>🤖 AI增强分析</h3><div style="white-space:pre-wrap;font-size:14px">${escapeHtml(d['llm_enhanced'])}</div></div>`;
+  }
+
+  // 问诊补充建议
+  if(d['问诊补充建议'] && d['问诊补充建议'].length>0) {
+    h += `<div style="font-size:13px;color:#999;margin-top:8px"><b>建议补充以下信息以获得更精确辨证：</b><br>`;
+    d['问诊补充建议'].forEach(q => { h += `• ${q}<br>`; });
+    h += `</div>`;
+  }
+
+  el.innerHTML = h;
+}
+
+async function recordFeedback() {
+  const eff = document.getElementById('efficacy').value;
+  if(!eff) return alert('请选择疗效反馈');
+  if(!lastDiagnosis) return alert('无诊断记录');
+
+  try {
+    const resp = await fetch('/api/diagnose/record', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        symptoms: lastDiagnosis.symptoms,
+        diagnosis: lastDiagnosis.diagnosis,
+        efficacy: eff
+      })
+    });
+    const data = await resp.json();
+    if(resp.ok) {
+      alert('✅ 案例已记录 (ID:'+data.case_id+')\n总案例: '+data.evolution_status['总案例数']);
+      document.getElementById('efficacy').value = '';
+    }
+  } catch(e) { alert('记录失败'); }
+}
+
+async function loadEvolution() {
+  try {
+    const [sr, cr, clr] = await Promise.all([
+      fetch('/api/evolution/status'),
+      fetch('/api/evolution/cases?limit=20'),
+      fetch('/api/evolution/checklist')
+    ]);
+    const status = await sr.json();
+    const cases = await cr.json();
+    const checklist = await clr.json();
+
+    // Stats
+    const st = document.getElementById('evoStats');
+    st.innerHTML = `
+      <div class="evo-item"><div class="enum">${status['总案例数']}</div><div class="etxt">总案例数</div></div>
+      <div class="evo-item"><div class="enum">${status['有疗效反馈']}</div><div class="etxt">有疗效反馈</div></div>
+      <div class="evo-item"><div class="enum">${status['有效率']}</div><div class="etxt">有效率</div></div>
+      <div class="evo-item"><div class="enum">${status['知识模式数']}</div><div class="etxt">知识模式</div></div>
+      <div class="evo-item"><div class="enum">${status['避坑清单条目']}</div><div class="etxt">避坑条目</div></div>
+    `;
+
+    if(status['高频方剂'] && status['高频方剂'].length>0) {
+      st.innerHTML += `<div style="grid-column:1/-1;font-size:13px;color:#888;margin-top:8px">
+        <b>高频方：</b>${status['高频方剂'].map(x=>x[0]+'('+x[1]+'次)').join(' · ')}</div>`;
+    }
+
+    // Cases
+    const cl = document.getElementById('caseList');
+    cl.innerHTML = '';
+    if(cases.cases && cases.cases.length>0) {
+      cases.cases.forEach(c => {
+        cl.innerHTML += `<div class="case-row">
+          <span class="cdate">${(c.timestamp||'').substring(0,16)}</span>
+          <span class="cfx">${c['主方']||c['六经定位']||''}</span>
+          <span style="font-size:12px">${(c.symptoms||'').substring(0,60)}...</span>
+          <span class="ceff" style="color:${c['疗效反馈']==='无效'?'red':'green'}">${c['疗效反馈']||'待反馈'}</span>
+        </div>`;
+      });
+    } else {
+      cl.innerHTML = '<div style="color:#999">暂无记录案例</div>';
+    }
+
+    // Checklist
+    document.getElementById('checklist').textContent = checklist.checklist || '（暂无避坑条目 — 当有"无效"或"恶化"反馈时自动生成）';
+
+    // Status line
+    document.getElementById('statusLine').innerHTML = `案例: ${status['总案例数']} | 六经辨证`;
+  } catch(e) { console.error(e); }
+}
+
+// Init
+fetch('/api/health').then(r=>r.json()).then(d=>{
+  document.getElementById('statusLine').textContent = `${d.llm_configured?'🤖 LLM增强':'📖 规则引擎'} | 案例: ${d.cases}`;
+}).catch(()=>{});
+</script>
+</body>
+</html>
