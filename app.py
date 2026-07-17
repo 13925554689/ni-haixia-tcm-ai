@@ -43,8 +43,8 @@ def api_diagnose():
         try:
             enhanced = _llm_enhance(symptoms, result)
             result["llm_enhanced"] = enhanced
-        except Exception:
-            result["llm_enhanced"] = "LLM增强分析不可用"
+        except Exception as e:
+            result["llm_enhanced"] = f"LLM增强分析不可用: {e}"
 
     return jsonify({"success": True, **result})
 

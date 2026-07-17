@@ -152,8 +152,9 @@ def analyze_tongue_from_bytes(image_bytes: bytes) -> dict:
         image_bytes = buf.getvalue()
     except ImportError:
         pass  # PIL 不可用时直接用原图
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("tongue_analysis").warning(f"图片压缩失败(非致命): {e}")
 
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
     return _call_vision_api(image_b64)
