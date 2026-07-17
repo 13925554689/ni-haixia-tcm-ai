@@ -12,6 +12,7 @@ from engine.knowledge_base import HEALTH_BASELINE, DIAGNOSIS_FRAMEWORK
 from engine.evolution_engine import (
     record_case, list_cases, search_cases, get_evolution_status, get_checklist, add_checklist_item
 )
+from engine.tongue_analysis import analyze_tongue_from_bytes, merge_tongue_to_symptoms
 
 app = Flask(__name__)
 
@@ -113,6 +114,77 @@ def api_health():
         "channels": len(DIAGNOSIS_FRAMEWORK),
         "formulas": len(DIAGNOSIS_FRAMEWORK),
     })
+
+
+# ───────── 舌诊照片分析 ─────────
+
+@app.route("/api/tongue/upload", methods=["POST"])
+def api_tongue_upload():
+    """上传舌苔照片 → Vision 分析 → 返回舌诊结果"""
+    if "image" not in request.files:
+        return jsonify({"error": "请上传图片文件（字段名：image）"}), 400
+
+    file = request.files["image"]
+    if not file.filename:
+        return jsonify({"error": "未选择文件"}), 400
+
+    # 检查文件类型
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp", "bmp"):
+        return jsonify({"error": f"不支持的图片格式: .{ext}，请用 JPG/PNG/WEBP"}), 400
+
+    image_bytes = file.read()
+    if len(image_bytes) > 10 * 1024 * 1024:  # 10MB 限制
+        return jsonify({"error": "图片过大（最大10MB）"}), 400
+
+    try:
+        result = analyze_tongue_from_bytes(image_bytes)
+    except Exception as e:
+        return jsonify({"error": f"舌诊分析失败: {e}"}), 500
+
+    # 合并到症状文本（供后续辨证使用）
+    symptom_hint = merge_tongue_to_symptoms(result)
+
+    return jsonify({
+        "success": True,
+        "tongue_analysis": result,
+        "symptom_hint": symptom_hint,
+    })
+
+
+@app.route("/api/tongue/analyze", methods=["POST"])
+def api_tongue_analyze():
+    """接收 base64 图片 + 已有症状 → 舌诊 + 综合辨证"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "请提供请求数据"}), 400
+
+    image_b64 = data.get("image", "")
+    symptoms = data.get("symptoms", "")
+
+    if not image_b64:
+        return jsonify({"error": "缺少 image（base64编码的图片）"}), 400
+
+    # 去掉可能的 data:image/...;base64, 前缀
+    if "," in image_b64 and image_b64.startswith("data:"):
+        image_b64 = image_b64.split(",", 1)[1]
+
+    try:
+        tongue_result = analyze_tongue_from_bytes(base64.b64decode(image_b64))
+    except Exception as e:
+        return jsonify({"error": f"舌诊分析失败: {e}"}), 500
+
+    response = {"success": True, "tongue_analysis": tongue_result}
+
+    # 如果同时有症状文本，做综合辨证
+    if symptoms and len(symptoms.strip()) >= 3:
+        from engine.diagnosis_engine import diagnose
+        tongue_symptoms = merge_tongue_to_symptoms(tongue_result)
+        combined = f"{symptoms.strip()}；{tongue_symptoms}" if tongue_symptoms else symptoms.strip()
+        diag = diagnose(combined)
+        response["diagnosis"] = diag
+
+    return jsonify(response)
 
 
 # ───────── LLM增强 ─────────

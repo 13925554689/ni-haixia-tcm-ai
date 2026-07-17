@@ -77,6 +77,8 @@ body { font-family: "Microsoft YaHei", sans-serif; background: var(--bg); color:
     <div class="chat-messages" id="chatMessages"></div>
     <div class="input-bar">
       <button class="btn-voice" id="btnVoice" onclick="toggleVoice()" title="语音输入">🎤</button>
+      <button class="btn-voice" onclick="document.getElementById('tongueInput').click()" title="拍舌苔/上传照片" style="border-color:var(--gold);color:var(--gold)">📷</button>
+      <input type="file" id="tongueInput" accept="image/*" capture="environment" style="display:none" onchange="uploadTongue(this)">
       <textarea id="userInput" rows="1" placeholder="描述您的症状，或用语音输入..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
       <button class="btn btn-send" onclick="sendMessage()">发送</button>
       <button class="btn btn-reset" onclick="resetChat()">新面诊</button>
@@ -317,6 +319,88 @@ async function loadEvolutionMini() {
       <div class="evo-item"><div class="enum">${s['知识模式数']}</div><div class="etxt">模式</div></div>
     `;
   } catch(e) {}
+}
+
+// ━━━ 舌苔拍照上传 ━━━
+async function uploadTongue(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  addMessage('user', '📷 上传舌苔照片：' + file.name);
+  addTyping();
+  
+  const formData = new FormData();
+  formData.append('image', file);
+  
+  try {
+    const resp = await fetch('/api/tongue/upload', { method: 'POST', body: formData });
+    const data = await resp.json();
+    removeTyping();
+    
+    if (!resp.ok) {
+      addMessage('ai', '舌诊失败：' + (data.error || '请重试'));
+      return;
+    }
+    
+    const t = data.tongue_analysis;
+    // 在聊天区显示舌诊结果
+    let msg = `👅 舌诊分析结果：\n`;
+    if (t['舌色']) msg += `• 舌色：${t['舌色']}\n`;
+    if (t['舌苔']) msg += `• 舌苔：${t['舌苔']}（${t['舌苔厚度']||'?'}，${t['舌苔润燥']||'?'}）\n`;
+    if (t['舌形']) msg += `• 舌形：${t['舌形']}\n`;
+    if (t['中医辨证']) msg += `• 辨证：${t['中医辨证']}\n`;
+    if (t['倪师解读']) msg += `\n💭 ${t['倪师解读']}\n`;
+    if (t['建议关注']) msg += `\n📋 ${t['建议关注']}`;
+    if (t['可信度']) msg += `\n\n置信度：${t['可信度']}`;
+    
+    addMessage('ai', msg);
+    
+    // 如果有 symptom_hint，自动加入症状积累
+    if (data.symptom_hint) {
+      accumulatedSymptoms.push(data.symptom_hint);
+    }
+    
+    // 渲染舌诊卡片到右侧面板
+    showTongueResult(t);
+    
+    // 自动追下一步问诊
+    if (questionIndex < QUESTIONS.length - 1) {
+      setTimeout(() => {
+        addMessage('ai', QUESTIONS[questionIndex], true);
+        questionIndex++;
+      }, 800);
+    }
+  } catch (e) {
+    removeTyping();
+    addMessage('ai', '舌诊请求失败：' + e.message);
+  }
+  
+  input.value = ''; // 允许重复上传同一文件
+}
+
+function showTongueResult(t) {
+  const el = document.getElementById('resultContent');
+  const placeholder = document.getElementById('resultPlaceholder');
+  placeholder.style.display = 'none';
+  el.style.display = 'block';
+  
+  let h = `<div class="diag-box" style="background:#fff5f0;border-color:#e67e22"><div class="label">👅 舌诊结果</div>`;
+  
+  const gridStyle = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;font-size:13px';
+  h += `<div style="${gridStyle}">`;
+  h += `<div><b>舌色</b><br>${escapeHtml(t['舌色']||'?')}</div>`;
+  h += `<div><b>舌形</b><br>${escapeHtml(t['舌形']||'?')}</div>`;
+  h += `<div><b>舌苔</b><br>${escapeHtml(t['舌苔']||'?')}</div>`;
+  h += `<div><b>润燥</b><br>${escapeHtml(t['舌苔润燥']||'?')}</div>`;
+  h += `</div>`;
+  
+  if (t['中医辨证']) h += `<div style="margin:8px 0;padding:8px;background:#fff;border-radius:6px"><b>📊 辨证：</b>${escapeHtml(t['中医辨证'])}</div>`;
+  if (t['倪师解读']) h += `<div class="ni-quote">💭 ${escapeHtml(t['倪师解读'])}</div>`;
+  if (t['建议关注']) h += `<div style="font-size:12px;color:#888;margin-top:6px">📋 ${escapeHtml(t['建议关注'])}</div>`;
+  h += `<div style="color:#888;font-size:11px;margin-top:6px">可信度：${escapeHtml(t['可信度']||'?')} | 模型：${escapeHtml(t['_vision_model']||'vision')}</div>`;
+  h += `</div>`;
+  
+  el.innerHTML = h;
 }
 
 // ━━━ 重置 ━━━
