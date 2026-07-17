@@ -114,8 +114,8 @@ def search_by_keyword(query: str, module: Optional[str] = None, limit: int = 10)
                         if len(snippets) >= 3:
                             break
                 summary = snippets[0] if snippets else lines[0][:200]
-            except Exception:
-                summary = f"{f.name}"  # 文件读取失败，降级为仅文件名摘要
+            except Exception:  # 文件读取失败，降级为仅文件名摘要
+                summary = f"{f.name}"
 
             results.append({
                 "source": rel_path,
