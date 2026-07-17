@@ -126,6 +126,28 @@ def search_by_keyword(query: str, module: Optional[str] = None, limit: int = 10)
                 "path": str(f),
             })
 
+    # 文件名匹配失败时，fallback 到全文搜索
+    if not results:
+        for f in md_files[:50]:
+            try:
+                content = f.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            if query not in content:
+                continue
+            idx = content.find(query)
+            start = max(0, idx - 100)
+            end = min(len(content), idx + 300)
+            snippet = content[start:end].replace("\n", " ")
+            results.append({
+                "source": f.relative_to(refs_dir).as_posix(),
+                "name": f.name.replace(".md", ""),
+                "type": "reference",
+                "score": 1,
+                "summary": f"...{snippet}...",
+                "path": str(f),
+            })
+
     # 截图搜索
     if screenshots_dir:
         ss_files = list(screenshots_dir.rglob("*.webp")) + list(screenshots_dir.rglob("*.png")) + list(screenshots_dir.rglob("*.jpg"))
