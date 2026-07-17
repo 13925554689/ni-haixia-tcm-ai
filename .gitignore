@@ -1,3 +1,6 @@
 .env
 __pycache__/
 *.pyc
+*.zip
+nihaisha-nishi-tcm-main/
+nihaisha-tcm.zip

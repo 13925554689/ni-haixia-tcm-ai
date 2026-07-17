@@ -115,7 +115,7 @@ def search_by_keyword(query: str, module: Optional[str] = None, limit: int = 10)
                             break
                 summary = snippets[0] if snippets else lines[0][:200]
             except Exception:
-                summary = f"{f.name}"
+                summary = f"{f.name}"  # 文件读取失败，降级为仅文件名摘要
 
             results.append({
                 "source": rel_path,
@@ -132,7 +132,7 @@ def search_by_keyword(query: str, module: Optional[str] = None, limit: int = 10)
             try:
                 content = f.read_text(encoding="utf-8")
             except Exception:
-                continue
+                continue  # 文件编码/权限问题，跳过
             if query not in content:
                 continue
             idx = content.find(query)
@@ -273,7 +273,7 @@ def get_module_stats() -> dict:
         try:
             stats["total_size_mb"] = round(sum(f.stat().st_size for f in md_files) / (1024 * 1024), 1)
         except Exception:
-            pass
+            pass  # 文件状态读取失败（非致命）
 
     if screenshots_dir:
         ss_files = list(screenshots_dir.rglob("*.webp")) + list(screenshots_dir.rglob("*.png"))
