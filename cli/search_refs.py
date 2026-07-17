@@ -131,8 +131,8 @@ def search_by_keyword(query: str, module: Optional[str] = None, limit: int = 10)
         for f in md_files[:50]:
             try:
                 content = f.read_text(encoding="utf-8")
-            except Exception:
-                continue  # 文件编码/权限问题，跳过
+            except Exception:  # 文件编码/权限问题，跳过
+                continue
             if query not in content:
                 continue
             idx = content.find(query)
@@ -181,7 +181,7 @@ def search_fulltext(query: str, limit: int = 10) -> List[dict]:
     for f in md_files[:50]:  # 限制扫描文件数
         try:
             content = f.read_text(encoding="utf-8")
-        except Exception:
+        except Exception:  # 文件编码/权限问题，跳过
             continue
 
         # 检查是否包含查询词
@@ -272,8 +272,8 @@ def get_module_stats() -> dict:
         stats["knowledge_base_loaded"] = len(md_files) > 0
         try:
             stats["total_size_mb"] = round(sum(f.stat().st_size for f in md_files) / (1024 * 1024), 1)
-        except Exception:
-            pass  # 文件状态读取失败（非致命）
+        except Exception:  # 文件状态读取失败（非致命）
+            pass
 
     if screenshots_dir:
         ss_files = list(screenshots_dir.rglob("*.webp")) + list(screenshots_dir.rglob("*.png"))
