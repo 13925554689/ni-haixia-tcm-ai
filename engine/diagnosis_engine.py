@@ -7,6 +7,7 @@ import os
 from engine.knowledge_base import (
     DIAGNOSIS_FRAMEWORK, HEALTH_BASELINE, FORMULA_DB, HERB_DB, DIAGNOSIS_TEMPLATE
 )
+from engine.diagnosis_formula import formula_diagnose, enrich_diagnosis_with_formula
 
 # ponytail: evolution feedback — load learned patterns once at import time
 _LEARNED_PATTERNS = {}
@@ -55,8 +56,41 @@ _SYMPTOM_CHANNEL_MAP = [
 
 
 def diagnose(symptoms: str) -> dict:
-    """主入口：症状文本 → 辨证结果 → 经方建议 → 药性分析"""
-    # 步骤1: 逐关键词独立计分（不是单正则=1分）
+    """主入口：公式优先 → 关键词fallback → 辨证结果 → 经方建议 → 药性分析
+    v2.0: 双引擎架构（nihaixia 公式引擎 + 原有关键词引擎）
+    """
+    symptoms = symptoms.strip()
+
+    # ─── 引擎1: 公式优先 ───
+    formula_result = formula_diagnose(symptoms)
+    if formula_result and formula_result.get("置信度") in ("高",):
+        # 高置信度公式匹配 → 直接返回公式结果 + 药性分析
+        formula_name = formula_result.get("主方", "")
+        formula_detail = FORMULA_DB.get(formula_name, {}) if formula_name else {}
+        herb_analysis = _build_herb_analysis(formula_detail)
+        return {
+            "diagnosis": f"{formula_result['六经定位']} → {formula_name}",
+            "六经定位": formula_result["六经定位"],
+            "置信度": formula_result["置信度"],
+            "主方": formula_name or "辨证选方中",
+            "病机": SIX_CHANNEL_DISEASE.get(formula_result["六经定位"], ""),
+            "治法": SIX_CHANNEL_TREATMENT.get(formula_result["六经定位"], ""),
+            "药性分析": herb_analysis,
+            "方剂详情": formula_detail or {},
+            "煎服法": formula_detail.get("煎法", "") if formula_detail else "",
+            "加减法": formula_detail.get("加减", {}) if formula_detail else {},
+            "注意事项": formula_detail.get("禁忌", "") if formula_detail else "",
+            "倪海厦诊疗思路": formula_result.get("鉴别提示", ""),
+            "辨证公式": formula_result.get("辨证公式", ""),
+            "辨证法则": formula_result.get("辨证法则", ""),
+            "鉴别要点": formula_result.get("鉴别要点", []),
+            "危险信号": formula_result.get("危险信号", ""),
+            "问诊补充建议": _get_followup_questions(symptoms),
+            "健康基线对比": _compare_health_baseline(symptoms),
+            "引擎": "formula",
+        }
+
+    # ─── 引擎2: 关键词匹配（原有逻辑 + 公式增强）───
     _KW_CHANNELS = [
         ("太阳病", ["恶寒", "怕冷", "发冷", "头项强", "颈项强", "后头痛", "脉浮", "身疼", "无汗", "有汗", "小便不利", "水入即吐", "少腹满", "少腹急结", "如狂", "项背强", "发热而渴", "不恶寒", "咽痛", "鼻鸣", "干呕", "鼻塞", "身痛", "腰痛"]),
         ("阳明病", ["大热", "大汗", "大渴", "口渴甚", "便秘", "腹满", "腹胀", "谵语", "胡言", "潮热", "日晡", "心烦", "懊憹", "懊恼", "失眠", "不得眠", "虚烦", "身黄", "黄疸", "喜忘", "屎硬", "色黑", "心中懊"]),
@@ -260,6 +294,47 @@ def _get_followup_questions(symptoms: str) -> list:
             if q:
                 missing.append(f"【{name}】{q[0]}")
     return missing
+
+
+# ───────── 双引擎helper ─────────
+
+# 六经病机/治法速查（供公式引擎使用）
+SIX_CHANNEL_DISEASE = {
+    "太阳病": "外邪袭表，卫气抗争",
+    "阳明病": "邪热入里，胃肠燥实",
+    "少阳病": "邪在半表半里，枢机不利",
+    "太阴病": "脾虚寒湿，运化失常",
+    "少阴病": "心肾阳虚，阴阳俱损",
+    "厥阴病": "阴阳失调，寒热错杂",
+}
+
+SIX_CHANNEL_TREATMENT = {
+    "太阳病": "解表",
+    "阳明病": "清热/攻下",
+    "少阳病": "和解",
+    "太阴病": "温中散寒",
+    "少阴病": "回阳救逆",
+    "厥阴病": "寒热并调",
+}
+
+
+def _build_herb_analysis(formula_detail: dict) -> list:
+    """构建药性分析列表"""
+    if not formula_detail:
+        return []
+    result = []
+    for herb, dose in formula_detail.get("组成", {}).items():
+        info = HERB_DB.get(herb, {})
+        result.append({
+            "药名": herb,
+            "剂量": dose,
+            "性味": info.get("性味", ""),
+            "归经": info.get("归经", ""),
+            "功效": info.get("功效", ""),
+            "倪注": info.get("倪注", ""),
+            "禁忌": info.get("禁忌", ""),
+        })
+    return result
 
 
 # ───────── Self-evolution layer ─────────
