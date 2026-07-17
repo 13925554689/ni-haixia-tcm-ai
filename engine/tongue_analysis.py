@@ -18,7 +18,12 @@ def _get_vision_config():
     except ImportError:
         pass
 
-    # 1. OpenRouter — 稳定、多模型
+    # 0. AIFAST — 中转站，gemini-2.5-flash 已验证可通
+    aifast_key = os.getenv("AIFAST_API_KEY", "")
+    if aifast_key:
+        return aifast_key, "https://www.aifast.club/v1", "gemini-2.5-flash"
+
+    # 1. OpenRouter
     or_key = os.getenv("OPENROUTER_API_KEY", "")
     if not or_key:
         # 兼容：ANTHROPIC_API_KEY 可能存了 OpenRouter key
