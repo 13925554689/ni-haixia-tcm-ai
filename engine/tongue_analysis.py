@@ -21,9 +21,9 @@ def _get_vision_config():
     # 1. OpenRouter — 稳定、多模型
     or_key = os.getenv("OPENROUTER_API_KEY", "")
     if not or_key:
-        # 兼容：ANTHROPIC_API_KEY 可能是 OpenRouter key（sk-or或其他前缀）
+        # 兼容：ANTHROPIC_API_KEY 可能存了 OpenRouter key
         anthro_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if anthro_key and (anthro_key.startswith("sk-or") or anthro_key.startswith("sk-")):
+        if anthro_key and anthro_key.startswith("sk-or"):
             or_key = anthro_key
     if or_key:
         return or_key, "https://openrouter.ai/api/v1", "google/gemini-2.5-flash"
