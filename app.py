@@ -295,7 +295,7 @@ def _llm_enhance(symptoms: str, diagnosis: dict) -> str:
     req = urllib.request.Request(url, data=data, headers=headers)
 
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read())
             if LLM_PROVIDER == "anthropic":
                 return result["content"][0]["text"]
