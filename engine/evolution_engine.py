@@ -147,7 +147,8 @@ def _load_checklist() -> str:
 def _append_checklist(text: str):
     existing = set()
     if os.path.exists(CHECKLIST_PATH):
-        existing = {line.strip() for line in open(CHECKLIST_PATH, encoding="utf-8").readlines() if line.strip()}
+        with open(CHECKLIST_PATH, encoding="utf-8") as f:
+            existing = {line.strip() for line in f.readlines() if line.strip()}
     new_lines = [l.strip() for l in text.split("\n") if l.strip() and l.strip() not in existing]
     if new_lines:
         with open(CHECKLIST_PATH, "a", encoding="utf-8") as f:

@@ -4,6 +4,7 @@ ponytail: 3个API端点 + 1个Web页面，完全自包含
 import os
 import json
 import time
+import base64
 from flask import Flask, request, jsonify, render_template
 
 from config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
@@ -42,8 +43,13 @@ def api_diagnose():
     symptoms = data.get("symptoms", "")
     if not symptoms or len(symptoms.strip()) < 3:
         return jsonify({"error": "请描述您的症状（至少3个字）"}), 400
+    if len(symptoms) > 2000:
+        return jsonify({"error": "症状描述过长（最多2000字）"}), 400
 
     result = diagnose(symptoms.strip())
+
+    if result.get("进化警告"):
+        result["evolution_warning"] = result.pop("进化警告")
 
     # 如果置信度够高且LLM可用，增强分析
     if result.get("置信度") in ("高", "中") and LLM_API_KEY:
@@ -171,6 +177,9 @@ def api_tongue_analyze():
 
     if not image_b64:
         return jsonify({"error": "缺少 image（base64编码的图片）"}), 400
+
+    if len(image_b64) > 14 * 1024 * 1024:
+        return jsonify({"error": "图片数据过大（最大10MB）"}), 400
 
     # 去掉可能的 data:image/...;base64, 前缀
     if "," in image_b64 and image_b64.startswith("data:"):

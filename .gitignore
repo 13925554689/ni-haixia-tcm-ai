@@ -2,5 +2,9 @@
 __pycache__/
 *.pyc
 *.zip
+.pytest_cache/
 nihaisha-nishi-tcm-main/
 nihaisha-tcm.zip
+nihaixia-3mb.zip
+.arts/
+.codeartsdoer/

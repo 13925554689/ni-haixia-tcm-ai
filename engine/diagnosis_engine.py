@@ -14,23 +14,33 @@ _LEARNED_PATTERNS = {}
 _HISTORY_PENALTY = set()
 _PATTERNS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "learned_patterns.json")
 _CHECKLIST_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "evolution_checklist.txt")
-try:
-    if os.path.exists(_PATTERNS_PATH):
-        with open(_PATTERNS_PATH, encoding="utf-8") as f:
-            _LEARNED_PATTERNS = json.load(f)
-except (json.JSONDecodeError, OSError):
-    pass
 
-# ponytail: parse checklist for historically-failed formulas
-try:
-    if os.path.exists(_CHECKLIST_PATH):
-        with open(_CHECKLIST_PATH, encoding="utf-8") as f:
-            for line in f:
-                m = re.search(r'→\s*(\S+)', line)
-                if m:
-                    _HISTORY_PENALTY.add(m.group(1))
-except OSError:
-    pass
+
+def _load_evolution_data():
+    global _LEARNED_PATTERNS, _HISTORY_PENALTY
+    patterns = {}
+    try:
+        if os.path.exists(_PATTERNS_PATH):
+            with open(_PATTERNS_PATH, encoding="utf-8") as f:
+                patterns = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        pass
+    _LEARNED_PATTERNS = patterns
+
+    penalty = set()
+    try:
+        if os.path.exists(_CHECKLIST_PATH):
+            with open(_CHECKLIST_PATH, encoding="utf-8") as f:
+                for line in f:
+                    m = re.search(r'→\s*(\S+)', line)
+                    if m:
+                        penalty.add(m.group(1))
+    except OSError:
+        pass
+    _HISTORY_PENALTY = penalty
+
+
+_load_evolution_data()
 
 # 症状→六经映射（关键词匹配）
 _SYMPTOM_CHANNEL_MAP = [
@@ -64,10 +74,12 @@ def diagnose(symptoms: str) -> dict:
     # ─── 引擎1: 公式优先 ───
     formula_result = formula_diagnose(symptoms)
     if formula_result and formula_result.get("置信度") in ("高",):
-        # 高置信度公式匹配 → 直接返回公式结果 + 药性分析
         formula_name = formula_result.get("主方", "")
         formula_detail = FORMULA_DB.get(formula_name, {}) if formula_name else {}
         herb_analysis = _build_herb_analysis(formula_detail)
+        evolution_warning = ""
+        if formula_name and formula_name in _HISTORY_PENALTY:
+            evolution_warning = f"⚠ 系统历史记录中，「{formula_name}」对类似症状曾出现「无效」反馈。建议详细辨证确认。"
         return {
             "diagnosis": f"{formula_result['六经定位']} → {formula_name}",
             "六经定位": formula_result["六经定位"],
@@ -85,6 +97,7 @@ def diagnose(symptoms: str) -> dict:
             "辨证法则": formula_result.get("辨证法则", ""),
             "鉴别要点": formula_result.get("鉴别要点", []),
             "危险信号": formula_result.get("危险信号", ""),
+            "进化警告": evolution_warning,
             "问诊补充建议": _get_followup_questions(symptoms),
             "健康基线对比": _compare_health_baseline(symptoms),
             "引擎": "formula",
@@ -95,7 +108,7 @@ def diagnose(symptoms: str) -> dict:
         ("太阳病", ["恶寒", "怕冷", "发冷", "头项强", "颈项强", "后头痛", "脉浮", "身疼", "无汗", "有汗", "小便不利", "水入即吐", "少腹满", "少腹急结", "如狂", "项背强", "发热而渴", "不恶寒", "咽痛", "鼻鸣", "干呕", "鼻塞", "身痛", "腰痛"]),
         ("阳明病", ["大热", "大汗", "大渴", "口渴甚", "便秘", "腹满", "腹胀", "谵语", "胡言", "潮热", "日晡", "心烦", "懊憹", "懊恼", "失眠", "不得眠", "虚烦", "身黄", "黄疸", "喜忘", "屎硬", "色黑", "心中懊"]),
         ("少阳病", ["口苦", "咽干", "目眩", "胸胁", "胁痛", "往来寒热", "忽冷忽热", "弦脉", "默默不欲食", "心烦喜呕", "心下痞硬", "胸胁满", "但头汗出", "胸满烦惊", "一身尽重"]),
-        ("太阴病", ["腹满时痛", "食不下", "呕吐清", "下利清", "拉肚子", "脾", "胃寒", "腹胀便溏", "完谷不化", "脘腹胀满", "不思饮食", "嗳腐", "肢体沉重", "心下痞硬", "兼表", "拒按"]),
+        ("太阴病", ["腹满时痛", "食不下", "呕吐清", "下利清", "拉肚子", "脾", "胃寒", "腹胀便溏", "完谷不化", "脘腹胀满", "不思饮食", "嗳腐", "肢体沉重", "心下痞硬", "兼表"]),
         ("少阴病", ["脉微细","脉细数","欲寐","嗜睡","四肢厥","手脚冰冷","心悸","腰膝酸","但欲眠","精神萎","但欲寐","下利清谷","恶寒蜷卧","心中烦","不得卧","不得眠","口燥咽干","口干咽燥","心下悸","头眩","身瞤动","四肢沉重","背恶寒","骨节痛","脉沉"]),
         ("厥阴病", ["消渴", "气上撞", "心中疼", "饥不欲食", "手足厥", "厥热", "蛔", "巅顶痛", "寒热错杂", "脉细欲绝", "手足厥寒", "热利下重", "便脓血", "干呕", "吐涎沫", "头痛", "久利"]),
     ]
@@ -182,6 +195,8 @@ def diagnose(symptoms: str) -> dict:
         "倪海厦诊疗思路": _generate_ni_commentary(primary, symptoms, formula_name or ""),
         "问诊补充建议": _get_followup_questions(symptoms),
         "置信度": confidence,
+        "进化警告": evolution_warning,
+        "引擎": "keyword",
     }
 
 

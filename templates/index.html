@@ -307,6 +307,10 @@ function renderResult(d) {
     h += `<div class="warning-box"><b>⚠ 禁忌与注意事项：</b>${escapeHtml(d['注意事项'])}</div>`;
   }
 
+  if (d['evolution_warning'] || d['进化警告']) {
+    h += `<div class="warning-box" style="border-left-color:#e67e22"><b>📊 进化引擎提醒：</b>${escapeHtml(d['evolution_warning']||d['进化警告'])}</div>`;
+  }
+
   // 进化面板
   h += `<div class="evo-tab"><h3>📈 自我进化</h3><div class="evo-stat" id="evoStatsSm"></div></div>`;
 
