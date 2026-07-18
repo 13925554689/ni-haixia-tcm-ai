@@ -18,12 +18,15 @@ def _get_vision_config():
     except ImportError:
         pass
 
-    # 0. AIFAST — 中转站，gemini-2.5-flash 已验证可通
+    # 0. 智谱 GLM-4V — 直连，免费额度
+    glm_key = os.getenv("GLM_API_KEY", "")
+    if glm_key:
+        return glm_key, "https://open.bigmodel.cn/api/paas/v4", "glm-4v"
+
+    # 1. AIFAST — 中转站，gemini-2.5-flash（备用）
     aifast_key = os.getenv("AIFAST_API_KEY", "")
     if aifast_key:
         return aifast_key, "https://www.aifast.club/v1", "gemini-2.5-flash"
-
-    # 1. OpenRouter
     or_key = os.getenv("OPENROUTER_API_KEY", "")
     if not or_key:
         # 兼容：ANTHROPIC_API_KEY 可能存了 OpenRouter key
@@ -33,12 +36,7 @@ def _get_vision_config():
     if or_key:
         return or_key, "https://openrouter.ai/api/v1", "google/gemini-2.5-flash"
 
-    # 2. GLM-4V (智谱)
-    glm_key = os.getenv("GLM_API_KEY", "")
-    if glm_key:
-        return glm_key, "https://open.bigmodel.cn/api/paas/v4", "glm-4v-flash"
-
-    # 3. Anthropic 直连
+    # 2. Anthropic 直连
     anthro_key = os.getenv("ANTHROPIC_API_KEY", "")
     if anthro_key and anthro_key.startswith("sk-ant"):
         return anthro_key, "https://api.anthropic.com", "claude-sonnet-4-20250514"
